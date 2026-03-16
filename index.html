@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>龙泉青瓷数字遗产交互系统 - 稳定版</title>
+    <title>龙泉青瓷数字遗产交互系统 - GitHub 稳定版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://unpkg.com/@mediapipe/hands/hands.js"></script>
+    <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://unpkg.com/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
     <style>
         body { margin: 0; background: #000406; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
@@ -22,9 +21,8 @@
         .glass-panel { background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .ui-interact { pointer-events: auto; }
         #sidebar { transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; }
-        .draggable-item { cursor: grab; transition: all 0.3s ease; }
+        .draggable-item { cursor: grab; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.05); }
         .draggable-item.dragging { opacity: 0.4; background: rgba(0, 255, 204, 0.1); }
-        .drag-over { border-top: 2px solid #00ffcc !important; }
         .ok-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: #00ffcc; width: 0%; transition: width 0.1s linear; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(0,255,204,0.2); border-radius: 10px; }
@@ -32,7 +30,7 @@
 </head>
 <body onclick="handleFirstInteraction()">
     <audio id="bgm" loop preload="auto">
-        <source src="https://cdn.jsdelivr.net/gh/cola112138/LQQC.github.io@main/Among%20the%20Stars.mp3" type="audio/mpeg">
+        <source src="Among the Stars.mp3" type="audio/mpeg">
     </audio>
 
     <div id="canvas-container" class="fixed inset-0 z-0"></div>
@@ -51,7 +49,7 @@
                 <div id="vision-dot" class="w-2 h-2 rounded-full bg-red-600"></div>
                 <div>
                     <div class="text-[8px] tracking-widest text-white/40 uppercase mb-1">Hand Tracking</div>
-                    <div id="gesture-name" class="text-xs font-medium text-cyan-400">正在初始化AI...</div>
+                    <div id="gesture-name" class="text-xs font-medium text-cyan-400">正在启动识别...</div>
                 </div>
                 <div id="ok-bar" class="ok-progress"></div>
             </div>
@@ -75,8 +73,7 @@
                 <span class="text-xs tracking-[0.4em] text-white/60 uppercase">Archives / 档案库</span>
                 <button onclick="toggleSidebar(false)" class="ui-interact text-[10px] text-cyan-400">CLOSE</button>
             </div>
-            <div id="model-list" class="ui-interact flex-1 overflow-y-auto space-y-3 pr-2">
-                </div>
+            <div id="model-list" class="ui-interact flex-1 overflow-y-auto space-y-3 pr-2"></div>
         </div>
     </div>
 
@@ -87,21 +84,18 @@
 
     <div class="fixed bottom-12 left-12 w-48 h-32 glass-panel rounded-2xl overflow-hidden z-40">
         <video id="input_video" class="absolute inset-0 w-full h-full object-cover opacity-20" playsinline></video>
-        <canvas id="output_canvas" class="absolute inset-0 w-full h-full"></canvas>
-        <div id="loading-overlay" class="absolute inset-0 flex items-center justify-center bg-black/60">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
-        </div>
+        <canvas id="output_canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
     </div>
 
     <script>
-        const config = { count: 150000 };
+        const config = { count: 120000 };
         let scene, camera, renderer, points, composer;
         let targetPositions = new Float32Array(config.count * 3);
         let targetColors = new Float32Array(config.count * 3);
         let targetSizes = new Float32Array(config.count);
         let models = [], activeModelIndex = -1;
         let currentRotationY = 0, targetScale = 1.0, lerpScale = 1.0;
-        let audioStarted = false;
+        let audioStarted = false, okGestureStartTime = null;
 
         const artifactDescriptions = {
             '龙泉窑舟形砚滴': '浙江省博物馆的镇馆之宝。整器巧妙化作一叶扁舟，舟上人物神态生动。釉质紧致，色泽淡雅。作为盛水注墨之器，它不仅体现了宋元时期陶瓷工艺的精湛，更承载了古代士大夫阶层的审美风骨。',
@@ -130,7 +124,7 @@
             geo.setAttribute('size', new THREE.BufferAttribute(new Float32Array(config.count), 1));
 
             points = new THREE.Points(geo, new THREE.ShaderMaterial({
-                uniforms: { uTime: { value: 0 }, uRotation: { value: 0 }, uScale: { value: 1.0 } },
+                uniforms: { uRotation: { value: 0 }, uScale: { value: 1.0 } },
                 vertexShader: `
                     attribute float size; attribute vec3 color; varying vec3 vColor;
                     uniform float uRotation; uniform float uScale;
@@ -159,33 +153,31 @@
             animate();
         }
 
+        // 修改点：直接使用文件相对路径，针对 GitHub 仓库环境优化
         function loadFixedArchives() {
             const gltfLoader = new THREE.GLTFLoader();
             const targets = [
-                { name: '龙泉窑舟形砚滴', url: 'https://cdn.jsdelivr.net/gh/cola112138/LQQC.github.io@main/%E9%BE%99%E6%B3%89%E7%AA%91%E8%88%9F%E5%BD%A2%E7%A0%9A%E6%BB%B4.glb' },
-                { name: '青釉小瓷马', url: 'https://cdn.jsdelivr.net/gh/cola112138/LQQC.github.io@main/%E9%9D%92%E9%87%89%E5%B0%8F%E7%93%B7%E9%A9%AC.glb' },
-                { name: '龙泉窑青釉鸡首壶', url: 'https://cdn.jsdelivr.net/gh/cola112138/LQQC.github.io@main/%E9%B8%A1%E9%A6%96%E5%A3%B6.glb' },
-                { name: '青釉双鱼耳瓶', url: 'https://cdn.jsdelivr.net/gh/cola112138/LQQC.github.io@main/%E9%9D%92%E9%87%89%E5%8F%8C%E9%B1%BC%E8%80%B3%E7%93%B6.glb' },
-                { name: '元代高足杯', url: 'https://cdn.jsdelivr.net/gh/cola112138/LQQC.github.io@main/%E5%85%83%E4%BB%A3%E9%AB%98%E8%B6%B3%E6%9D%AF.glb' },
-                { name: '南宋青釉香炉', url: 'https://cdn.jsdelivr.net/gh/cola112138/LQQC.github.io@main/%E5%8D%97%E5%AE%8B%E9%9D%92%E9%87%89%E9%A6%99%E7%82%89.glb' }
+                { name: '龙泉窑舟形砚滴', file: '龙泉窑舟形砚滴.glb' },
+                { name: '青釉小瓷马', file: '青釉小瓷马.glb' },
+                { name: '龙泉窑青釉鸡首壶', file: '鸡首壶.glb' },
+                { name: '青釉双鱼耳瓶', file: '青釉双鱼耳瓶.glb' },
+                { name: '元代高足杯', file: '元代高足杯.glb' },
+                { name: '南宋青釉香炉', file: '南宋青釉香炉.glb' }
             ];
 
-            // 1. 先初始化数据结构
             models = targets.map((t, i) => ({
-                id: i, name: t.name, url: t.url, group: null, loaded: false, desc: artifactDescriptions[t.name]
+                id: i, name: t.name, file: t.file, group: null, loaded: false, desc: artifactDescriptions[t.name]
             }));
 
-            // 2. 立即渲染列表（此时模型还在后台加载）
             renderModelList();
 
-            // 3. 异步循环加载
             models.forEach((m, i) => {
-                gltfLoader.load(m.url, (gltf) => {
+                // 这里使用当前文件夹下的相对路径，防止跨域报错
+                gltfLoader.load(m.file, (gltf) => {
                     m.group = gltf.scene;
                     m.loaded = true;
-                    console.log('Loaded:', m.name);
-                    renderModelList(); // 更新按钮状态
-                }, undefined, (err) => console.error('Error loading', m.name));
+                    renderModelList();
+                }, undefined, (err) => console.error(m.name + ' 加载失败，请检查文件名是否正确', err));
             });
         }
 
@@ -194,30 +186,25 @@
             list.innerHTML = '';
             models.forEach((m, i) => {
                 const div = document.createElement('div');
-                div.className = "draggable-item p-4 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center ui-interact";
+                div.className = "draggable-item p-4 bg-white/5 rounded-xl flex justify-between items-center ui-interact mb-2";
                 div.setAttribute('draggable', 'true');
-                div.dataset.index = i;
-                
                 div.innerHTML = `
                     <span class="text-[10px] tracking-widest text-white/70">${m.name}</span>
                     <button class="text-[8px] border border-cyan-400/30 px-2 py-1 rounded text-cyan-400">
                         ${m.loaded ? 'LOAD' : 'LOADING...'}
                     </button>
                 `;
-
                 div.onclick = () => { if(m.loaded) reconstructModel(i); };
                 
-                // 拖拽逻辑保持
-                div.ondragstart = (e) => { e.dataTransfer.setData('text', i); div.classList.add('dragging'); };
-                div.ondragend = () => div.classList.remove('dragging');
-                div.ondragover = (e) => { e.preventDefault(); div.classList.add('drag-over'); };
-                div.ondragleave = () => div.classList.remove('drag-over');
+                // 拖拽排序逻辑
+                div.ondragstart = (e) => { e.dataTransfer.setData('text', i); div.style.opacity = '0.4'; };
+                div.ondragend = () => div.style.opacity = '1';
+                div.ondragover = (e) => e.preventDefault();
                 div.ondrop = (e) => {
                     e.preventDefault();
                     const from = parseInt(e.dataTransfer.getData('text'));
-                    const to = i;
                     const item = models.splice(from, 1)[0];
-                    models.splice(to, 0, item);
+                    models.splice(i, 0, item);
                     renderModelList();
                 };
                 list.appendChild(div);
@@ -247,11 +234,12 @@
 
             const box = new THREE.Box3().setFromObject(m.group);
             const center = box.getCenter(new THREE.Vector3());
-            const scale = 50 / Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).y);
+            const size = box.getSize(new THREE.Vector3());
+            const scale = 55 / Math.max(size.x, size.y, size.z);
 
             for(let i=0; i<config.count; i++) {
                 const i3 = i * 3;
-                if(i < config.count * 0.8) {
+                if(i < config.count * 0.85) {
                     const p = pts[Math.floor(Math.random() * pts.length)];
                     targetPositions[i3] = (p.x - center.x) * scale;
                     targetPositions[i3+1] = (p.y - center.y) * scale;
@@ -259,10 +247,10 @@
                     targetColors[i3] = 0.4; targetColors[i3+1] = 0.8; targetColors[i3+2] = 0.7;
                     targetSizes[i] = 0.05;
                 } else {
-                    const r = 80 + Math.random() * 40;
+                    const r = 100 + Math.random() * 50;
                     const a = Math.random() * Math.PI * 2;
                     targetPositions[i3] = Math.cos(a) * r;
-                    targetPositions[i3+1] = (Math.random()-0.5) * 100;
+                    targetPositions[i3+1] = (Math.random()-0.5) * 200;
                     targetPositions[i3+2] = Math.sin(a) * r;
                     targetColors[i3] = 0.1; targetColors[i3+1] = 0.2; targetColors[i3+2] = 0.3;
                     targetSizes[i] = 0.03;
@@ -280,14 +268,14 @@
                 targetPositions[i3] = r * Math.sin(phi) * Math.cos(theta);
                 targetPositions[i3+1] = r * Math.sin(phi) * Math.sin(theta);
                 targetPositions[i3+2] = r * Math.cos(phi);
-                targetColors[i3] = 0.2; targetColors[i3+1] = 0.4; targetColors[i3+2] = 0.5;
+                targetColors[i3] = 0.3; targetColors[i3+1] = 0.5; targetColors[i3+2] = 0.6;
                 targetSizes[i] = 0.08;
             }
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            currentRotationY += 0.002;
+            currentRotationY += 0.0015;
             lerpScale += (targetScale - lerpScale) * 0.1;
             points.material.uniforms.uRotation.value = currentRotationY;
             points.material.uniforms.uScale.value = lerpScale;
@@ -297,13 +285,13 @@
             const s = points.geometry.attributes.size.array;
             for(let i=0; i<config.count; i++) {
                 const i3 = i*3;
-                p[i3] += (targetPositions[i3] - p[i3]) * 0.05;
-                p[i3+1] += (targetPositions[i3+1] - p[i3+1]) * 0.05;
-                p[i3+2] += (targetPositions[i3+2] - p[i3+2]) * 0.05;
-                c[i3] += (targetColors[i3] - c[i3]) * 0.02;
-                c[i3+1] += (targetColors[i3+1] - c[i3+1]) * 0.02;
-                c[i3+2] += (targetColors[i3+2] - c[i3+2]) * 0.02;
-                s[i] += (targetSizes[i] - s[i]) * 0.05;
+                p[i3] += (targetPositions[i3] - p[i3]) * 0.06;
+                p[i3+1] += (targetPositions[i3+1] - p[i3+1]) * 0.06;
+                p[i3+2] += (targetPositions[i3+2] - p[i3+2]) * 0.06;
+                c[i3] += (targetColors[i3] - c[i3]) * 0.03;
+                c[i3+1] += (targetColors[i3+1] - c[i3+1]) * 0.03;
+                c[i3+2] += (targetColors[i3+2] - c[i3+2]) * 0.03;
+                s[i] += (targetSizes[i] - s[i]) * 0.06;
             }
             points.geometry.attributes.position.needsUpdate = true;
             points.geometry.attributes.color.needsUpdate = true;
@@ -311,19 +299,40 @@
             composer.render();
         }
 
+        // 修改点：优化 MediaPipe 加载逻辑
         function initVision() {
             const video = document.getElementById('input_video');
-            const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
-            hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6 });
+            const canvasCtx = document.getElementById('output_canvas').getContext('2d');
+            
+            const hands = new Hands({ locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}` });
+            hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7 });
             
             hands.onResults((res) => {
-                document.getElementById('loading-overlay').style.display = 'none';
                 const dot = document.getElementById('vision-dot');
                 const label = document.getElementById('gesture-name');
+                const okBar = document.getElementById('ok-bar');
+
                 if(res.multiHandLandmarks && res.multiHandLandmarks.length > 0) {
-                    dot.className = "w-2 h-2 rounded-full bg-cyan-400";
+                    dot.className = "w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00ffff]";
                     label.innerText = "手势交互中";
-                    // 简化版交互逻辑... (保持原有的OK切换等)
+                    const lm = res.multiHandLandmarks[0];
+                    
+                    // OK 手势逻辑
+                    const d = (p1, p2) => Math.hypot(lm[p1].x - lm[p2].x, lm[p1].y - lm[p2].y);
+                    const isOK = d(4, 8) < 0.05 && lm[12].y < lm[10].y;
+                    
+                    if(isOK) {
+                        if(!okGestureStartTime) okGestureStartTime = Date.now();
+                        const p = Math.min(100, ((Date.now() - okGestureStartTime) / 1500) * 100);
+                        okBar.style.width = p + "%";
+                        if(p >= 100) {
+                            reconstructModel((activeModelIndex + 1) % models.length);
+                            okGestureStartTime = null;
+                        }
+                    } else {
+                        okGestureStartTime = null;
+                        okBar.style.width = "0%";
+                    }
                 } else {
                     dot.className = "w-2 h-2 rounded-full bg-red-600";
                     label.innerText = "等待输入...";
@@ -331,14 +340,11 @@
             });
 
             const cam = new Camera(video, { onFrame: async () => await hands.send({image: video}), width: 320, height: 240 });
-            cam.start().catch(e => {
-                console.error(e);
-                document.getElementById('gesture-name').innerText = "摄像头受阻";
-            });
+            cam.start();
         }
 
         function toggleSidebar(s) { document.getElementById('sidebar').style.transform = s ? 'translateX(0)' : 'translateX(-100%)'; }
-        function handleFirstInteraction() { if(!audioStarted) { document.getElementById('bgm').play(); audioStarted = true; } }
+        function handleFirstInteraction() { if(!audioStarted) { document.getElementById('bgm').play().catch(()=>{}); audioStarted = true; } }
         window.onload = () => { initApp(); initVision(); };
     </script>
 </body>
