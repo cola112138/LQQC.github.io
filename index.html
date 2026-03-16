@@ -5,22 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>龙泉青瓷数字遗产交互系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     
     <script src="https://unpkg.com/@mediapipe/hands/hands.js"></script>
     <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js"></script>
 
     <style>
         body { margin: 0; background: #000406; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
-        canvas { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
-        .glass-panel { background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        canvas { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .ui-interact { pointer-events: auto; }
         #sidebar { transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; }
         .ok-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: #00ffcc; width: 0%; transition: width 0.1s linear; }
@@ -29,65 +23,62 @@
 <body onclick="handleFirstInteraction()">
     <audio id="bgm" loop><source src="Among the Stars.mp3" type="audio/mpeg"></audio>
 
-    <div id="canvas-container" class="fixed inset-0 z-0"></div>
+    <div id="canvas-container"></div>
 
-    <div class="fixed inset-0 pointer-events-none z-20 p-12 flex flex-col justify-between">
+    <div class="fixed inset-0 pointer-events-none z-20 p-8 flex flex-col justify-between">
         <header>
             <div class="w-12 h-0.5 bg-yellow-500 mb-4"></div>
-            <h1 class="text-3xl font-extralight tracking-[0.5em] mb-2 uppercase">LONGQUANQC</h1>
-            <h2 class="text-lg font-light tracking-[0.2em] text-white/40">窑火炼千载，一色出天青。</h2>
+            <h1 class="text-2xl font-extralight tracking-[0.5em] mb-2">LONGQUAN QC</h1>
+            <p class="text-xs text-white/40 tracking-widest">窑火炼千载，一色出天青</p>
         </header>
 
         <footer class="flex justify-between items-end">
-            <div class="glass-panel p-4 rounded-2xl w-48 border-l-2 border-l-cyan-500 relative overflow-hidden">
-                <div class="flex items-center gap-4">
+            <div class="glass-panel p-4 rounded-xl w-48 border-l-2 border-l-cyan-500 relative overflow-hidden">
+                <div class="flex items-center gap-3">
                     <div id="vision-dot" class="w-2 h-2 rounded-full bg-red-600"></div>
                     <div>
-                        <div class="text-[8px] tracking-widest text-white/40 uppercase mb-1">Hand Tracking</div>
-                        <div id="gesture-name" class="text-xs font-medium text-cyan-400">系统启动中...</div>
+                        <div class="text-[8px] text-white/40 uppercase">AI Tracking</div>
+                        <div id="gesture-name" class="text-xs text-cyan-400">正在连接摄像头...</div>
                     </div>
                 </div>
                 <div id="ok-bar" class="ok-progress"></div>
             </div>
-            <div id="asset-name" class="text-sm font-light tracking-[0.2em] text-white/80 text-right">星云待机模式</div>
+            <div id="asset-name" class="text-sm font-light tracking-widest text-white/80">星云待机模式</div>
         </footer>
     </div>
 
-    <button onclick="toggleSidebar(true)" class="ui-interact fixed left-6 top-1/2 -translate-y-1/2 z-40 p-5 group">
-        <div class="flex flex-col gap-2">
-            <div class="w-1.5 h-1.5 rounded-full bg-cyan-800 group-hover:bg-cyan-400"></div>
-            <div class="w-1.5 h-1.5 rounded-full bg-cyan-800 group-hover:bg-cyan-400"></div>
-            <div class="w-1.5 h-1.5 rounded-full bg-cyan-800 group-hover:bg-cyan-400"></div>
+    <button onclick="toggleSidebar(true)" class="ui-interact fixed left-6 top-1/2 -translate-y-1/2 z-40 p-4">
+        <div class="space-y-1.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
         </div>
     </button>
 
-    <div id="sidebar" class="fixed left-0 top-0 h-full w-80 glass-panel border-r border-white/10 -translate-x-full flex flex-col">
-        <div class="p-10 flex flex-col h-full">
-            <div class="flex justify-between items-center mb-10">
-                <span class="text-xs tracking-[0.4em] text-white/60">ARCHIVES / 档案库</span>
-                <button onclick="toggleSidebar(false)" class="ui-interact text-[10px] text-cyan-400">CLOSE</button>
-            </div>
-            <div id="model-list" class="ui-interact flex-1 overflow-y-auto space-y-3"></div>
+    <div id="sidebar" class="fixed left-0 top-0 h-full w-80 glass-panel border-r border-white/10 -translate-x-full flex flex-col p-10">
+        <div class="flex justify-between items-center mb-10">
+            <span class="text-xs tracking-[0.3em] text-white/60">ARCHIVES / 档案库</span>
+            <button onclick="toggleSidebar(false)" class="ui-interact text-cyan-400 text-xs">CLOSE</button>
         </div>
+        <div id="model-list" class="ui-interact flex-1 overflow-y-auto space-y-3"></div>
     </div>
 
-    <div id="info-panel" class="fixed right-12 top-1/2 -translate-y-1/2 w-80 glass-panel p-8 rounded-[2rem] opacity-0 transition-all duration-700 translate-x-12 z-30">
-        <h3 id="panel-title" class="text-xl font-light mb-4 border-b border-white/10 pb-4"></h3>
-        <div id="panel-desc" class="text-[10px] leading-relaxed text-white/60 italic text-justify"></div>
+    <div id="info-panel" class="fixed right-10 top-1/2 -translate-y-1/2 w-72 glass-panel p-6 rounded-3xl opacity-0 transition-all duration-700 translate-x-10 z-30">
+        <h3 id="panel-title" class="text-lg font-light mb-4 border-b border-white/10 pb-2"></h3>
+        <p id="panel-desc" class="text-[10px] leading-relaxed text-white/60 text-justify"></p>
     </div>
 
-    <div class="fixed bottom-12 left-12 w-48 h-32 glass-panel rounded-2xl overflow-hidden z-40">
-        <video id="input_video" class="absolute inset-0 w-full h-full object-cover opacity-20" playsinline></video>
+    <div class="fixed bottom-8 left-8 w-40 h-28 glass-panel rounded-xl overflow-hidden z-40">
+        <video id="input_video" class="absolute inset-0 w-full h-full object-cover opacity-30" playsinline></video>
     </div>
 
     <script>
-        const config = { count: 120000 };
-        let scene, camera, renderer, points, composer;
+        const config = { count: 80000 }; // 稍微调低粒子数以保证 GitHub 运行流畅
+        let scene, camera, renderer, points;
         let targetPositions = new Float32Array(config.count * 3);
         let targetColors = new Float32Array(config.count * 3);
-        let targetSizes = new Float32Array(config.count);
         let models = [], activeModelIndex = -1;
-        let currentRotationY = 0, targetScale = 1.0, lerpScale = 1.0;
+        let currentRotationY = 0;
         let audioStarted = false, okGestureStartTime = null;
 
         const artifactDescriptions = {
@@ -101,48 +92,19 @@
 
         function initApp() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 0.1, 2000);
-            camera.position.z = 180;
+            camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.z = 150;
             
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-            // 修复后期处理：确保 ShaderPass 已加载
-            composer = new THREE.EffectComposer(renderer);
-            composer.addPass(new THREE.RenderPass(scene, camera));
-            const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85);
-            composer.addPass(bloom);
 
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(config.count * 3), 3));
             geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(config.count * 3), 3));
-            geo.setAttribute('size', new THREE.BufferAttribute(new Float32Array(config.count), 1));
 
-            points = new THREE.Points(geo, new THREE.ShaderMaterial({
-                uniforms: { uRotation: { value: 0 }, uScale: { value: 1.0 } },
-                vertexShader: `
-                    attribute float size; attribute vec3 color; varying vec3 vColor;
-                    uniform float uRotation; uniform float uScale;
-                    void main() {
-                        vColor = color; vec3 pos = position * uScale;
-                        float s = sin(uRotation); float c = cos(uRotation);
-                        mat2 rot = mat2(c, -s, s, c); pos.xz = rot * pos.xz;
-                        vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
-                        gl_PointSize = size * (2000.0 / -mvPos.z);
-                        gl_Position = projectionMatrix * mvPos;
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vColor;
-                    void main() {
-                        if (distance(gl_PointCoord, vec2(0.5)) > 0.5) discard;
-                        gl_FragColor = vec4(vColor, 0.8);
-                    }
-                `,
-                transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
-            }));
+            const mat = new THREE.PointsMaterial({ size: 0.15, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
+            points = new THREE.Points(geo, mat);
             scene.add(points);
             
             setNebulaMode();
@@ -172,7 +134,7 @@
                     m.group = gltf.scene;
                     m.loaded = true;
                     renderModelList();
-                }, undefined, (err) => console.error(m.name + " 加载失败", err));
+                }, undefined, (err) => console.error(m.name + " 加载失败"));
             });
         }
 
@@ -181,11 +143,9 @@
             list.innerHTML = '';
             models.forEach((m, i) => {
                 const div = document.createElement('div');
-                div.className = "p-4 bg-white/5 rounded-xl flex justify-between items-center ui-interact mb-2 cursor-pointer border border-white/5 hover:border-cyan-400/50 transition-all";
-                div.innerHTML = `
-                    <span class="text-[10px] tracking-widest text-white/70">${m.name}</span>
-                    <span class="text-[8px] text-cyan-400">${m.loaded ? 'READY' : 'LOADING'}</span>
-                `;
+                div.className = "p-4 bg-white/5 rounded-xl flex justify-between items-center ui-interact mb-2 cursor-pointer hover:bg-white/10 transition-all";
+                div.innerHTML = `<span class="text-[10px] tracking-widest text-white/70">${m.name}</span>
+                                 <span class="text-[8px] text-cyan-400">${m.loaded ? 'READY' : '...'}</span>`;
                 div.onclick = () => { if(m.loaded) reconstructModel(i); };
                 list.appendChild(div);
             });
@@ -198,7 +158,7 @@
             document.getElementById('asset-name').innerText = m.name;
             document.getElementById('panel-title').innerText = m.name;
             document.getElementById('panel-desc').innerText = m.desc;
-            document.getElementById('info-panel').classList.remove('opacity-0', 'translate-x-12');
+            document.getElementById('info-panel').classList.remove('opacity-0', 'translate-x-10');
 
             const pts = [];
             m.group.traverse(c => {
@@ -214,25 +174,23 @@
 
             const box = new THREE.Box3().setFromObject(m.group);
             const center = box.getCenter(new THREE.Vector3());
-            const scale = 55 / Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).y);
+            const scale = 50 / Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).y);
 
             for(let i=0; i<config.count; i++) {
                 const i3 = i * 3;
-                if(i < config.count * 0.85) {
+                if(i < config.count * 0.9) {
                     const p = pts[Math.floor(Math.random() * pts.length)];
                     targetPositions[i3] = (p.x - center.x) * scale;
                     targetPositions[i3+1] = (p.y - center.y) * scale;
                     targetPositions[i3+2] = (p.z - center.z) * scale;
                     targetColors[i3] = 0.4; targetColors[i3+1] = 0.8; targetColors[i3+2] = 0.7;
-                    targetSizes[i] = 0.05;
                 } else {
-                    const r = 120 + Math.random() * 30;
+                    const r = 100 + Math.random() * 20;
                     const a = Math.random() * Math.PI * 2;
                     targetPositions[i3] = Math.cos(a) * r;
-                    targetPositions[i3+1] = (Math.random()-0.5) * 200;
+                    targetPositions[i3+1] = (Math.random()-0.5) * 100;
                     targetPositions[i3+2] = Math.sin(a) * r;
                     targetColors[i3] = 0.1; targetColors[i3+1] = 0.2; targetColors[i3+2] = 0.3;
-                    targetSizes[i] = 0.03;
                 }
             }
             toggleSidebar(false);
@@ -241,41 +199,35 @@
         function setNebulaMode() {
             for(let i=0; i<config.count; i++) {
                 const i3 = i * 3;
-                const r = 70 + Math.random() * 50;
+                const r = 50 + Math.random() * 50;
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.acos(Math.random() * 2 - 1);
                 targetPositions[i3] = r * Math.sin(phi) * Math.cos(theta);
                 targetPositions[i3+1] = r * Math.sin(phi) * Math.sin(theta);
                 targetPositions[i3+2] = r * Math.cos(phi);
                 targetColors[i3] = 0.2; targetColors[i3+1] = 0.4; targetColors[i3+2] = 0.5;
-                targetSizes[i] = 0.08;
             }
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            currentRotationY += 0.0015;
-            lerpScale += (targetScale - lerpScale) * 0.1;
-            points.material.uniforms.uRotation.value = currentRotationY;
-            points.material.uniforms.uScale.value = lerpScale;
+            currentRotationY += 0.002;
+            points.rotation.y = currentRotationY;
 
             const p = points.geometry.attributes.position.array;
             const c = points.geometry.attributes.color.array;
-            const s = points.geometry.attributes.size.array;
             for(let i=0; i<config.count; i++) {
                 const i3 = i*3;
-                p[i3] += (targetPositions[i3] - p[i3]) * 0.06;
-                p[i3+1] += (targetPositions[i3+1] - p[i3+1]) * 0.06;
-                p[i3+2] += (targetPositions[i3+2] - p[i3+2]) * 0.06;
-                c[i3] += (targetColors[i3] - c[i3]) * 0.03;
-                c[i3+1] += (targetColors[i3+1] - c[i3+1]) * 0.03;
-                c[i3+2] += (targetColors[i3+2] - c[i3+2]) * 0.03;
-                s[i] += (targetSizes[i] - s[i]) * 0.06;
+                p[i3] += (targetPositions[i3] - p[i3]) * 0.05;
+                p[i3+1] += (targetPositions[i3+1] - p[i3+1]) * 0.05;
+                p[i3+2] += (targetPositions[i3+2] - p[i3+2]) * 0.05;
+                c[i3] += (targetColors[i3] - c[i3]) * 0.02;
+                c[i3+1] += (targetColors[i3+1] - c[i3+1]) * 0.02;
+                c[i3+2] += (targetColors[i3+2] - c[i3+2]) * 0.02;
             }
             points.geometry.attributes.position.needsUpdate = true;
             points.geometry.attributes.color.needsUpdate = true;
-            points.geometry.attributes.size.needsUpdate = true;
-            composer.render();
+            renderer.render(scene, camera);
         }
 
         function initVision() {
@@ -292,8 +244,8 @@
                     dot.className = "w-2 h-2 rounded-full bg-cyan-400";
                     label.innerText = "手势交互中";
                     const lm = res.multiHandLandmarks[0];
-                    const d = (p1, p2) => Math.hypot(lm[p1].x - lm[p2].x, lm[p1].y - lm[p2].y);
-                    const isOK = d(4, 8) < 0.05 && lm[12].y < lm[10].y;
+                    const d = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
+                    const isOK = d < 0.05 && lm[12].y < lm[10].y;
                     
                     if(isOK) {
                         if(!okGestureStartTime) okGestureStartTime = Date.now();
