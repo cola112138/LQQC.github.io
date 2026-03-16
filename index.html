@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>龙泉青瓷数字遗产交互系统 - GitHub 稳定版</title>
+    <title>龙泉青瓷数字遗产交互系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     
     <script src="https://unpkg.com/@mediapipe/hands/hands.js"></script>
     <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://unpkg.com/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
     <style>
         body { margin: 0; background: #000406; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
@@ -21,45 +23,37 @@
         .glass-panel { background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .ui-interact { pointer-events: auto; }
         #sidebar { transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; }
-        .draggable-item { cursor: grab; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.05); }
-        .draggable-item.dragging { opacity: 0.4; background: rgba(0, 255, 204, 0.1); }
         .ok-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: #00ffcc; width: 0%; transition: width 0.1s linear; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(0,255,204,0.2); border-radius: 10px; }
     </style>
 </head>
 <body onclick="handleFirstInteraction()">
-    <audio id="bgm" loop preload="auto">
-        <source src="Among the Stars.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="bgm" loop><source src="Among the Stars.mp3" type="audio/mpeg"></audio>
 
     <div id="canvas-container" class="fixed inset-0 z-0"></div>
 
     <div class="fixed inset-0 pointer-events-none z-20 p-12 flex flex-col justify-between">
-        <header class="flex justify-between items-start">
-            <div>
-                <div class="w-12 h-0.5 bg-yellow-500 mb-4"></div>
-                <h1 class="text-3xl font-extralight tracking-[0.5em] mb-2 uppercase">LONGQUANQC</h1>
-                <h2 class="text-lg font-light tracking-[0.2em] text-white/40">窑火炼千载，一色出天青。</h2>
-            </div>
+        <header>
+            <div class="w-12 h-0.5 bg-yellow-500 mb-4"></div>
+            <h1 class="text-3xl font-extralight tracking-[0.5em] mb-2 uppercase">LONGQUANQC</h1>
+            <h2 class="text-lg font-light tracking-[0.2em] text-white/40">窑火炼千载，一色出天青。</h2>
         </header>
 
         <footer class="flex justify-between items-end">
-            <div class="glass-panel p-4 rounded-2xl w-48 flex items-center gap-4 border-l-2 border-l-cyan-500 relative overflow-hidden">
-                <div id="vision-dot" class="w-2 h-2 rounded-full bg-red-600"></div>
-                <div>
-                    <div class="text-[8px] tracking-widest text-white/40 uppercase mb-1">Hand Tracking</div>
-                    <div id="gesture-name" class="text-xs font-medium text-cyan-400">正在启动识别...</div>
+            <div class="glass-panel p-4 rounded-2xl w-48 border-l-2 border-l-cyan-500 relative overflow-hidden">
+                <div class="flex items-center gap-4">
+                    <div id="vision-dot" class="w-2 h-2 rounded-full bg-red-600"></div>
+                    <div>
+                        <div class="text-[8px] tracking-widest text-white/40 uppercase mb-1">Hand Tracking</div>
+                        <div id="gesture-name" class="text-xs font-medium text-cyan-400">系统启动中...</div>
+                    </div>
                 </div>
                 <div id="ok-bar" class="ok-progress"></div>
             </div>
-            <div class="text-right">
-                <div id="asset-name" class="text-sm font-light tracking-[0.2em] text-white/80">星云待机模式</div>
-            </div>
+            <div id="asset-name" class="text-sm font-light tracking-[0.2em] text-white/80 text-right">星云待机模式</div>
         </footer>
     </div>
 
-    <button onclick="toggleSidebar(true)" class="ui-interact fixed left-6 top-1/2 -translate-y-1/2 z-40 p-5 rounded-full group">
+    <button onclick="toggleSidebar(true)" class="ui-interact fixed left-6 top-1/2 -translate-y-1/2 z-40 p-5 group">
         <div class="flex flex-col gap-2">
             <div class="w-1.5 h-1.5 rounded-full bg-cyan-800 group-hover:bg-cyan-400"></div>
             <div class="w-1.5 h-1.5 rounded-full bg-cyan-800 group-hover:bg-cyan-400"></div>
@@ -70,10 +64,10 @@
     <div id="sidebar" class="fixed left-0 top-0 h-full w-80 glass-panel border-r border-white/10 -translate-x-full flex flex-col">
         <div class="p-10 flex flex-col h-full">
             <div class="flex justify-between items-center mb-10">
-                <span class="text-xs tracking-[0.4em] text-white/60 uppercase">Archives / 档案库</span>
+                <span class="text-xs tracking-[0.4em] text-white/60">ARCHIVES / 档案库</span>
                 <button onclick="toggleSidebar(false)" class="ui-interact text-[10px] text-cyan-400">CLOSE</button>
             </div>
-            <div id="model-list" class="ui-interact flex-1 overflow-y-auto space-y-3 pr-2"></div>
+            <div id="model-list" class="ui-interact flex-1 overflow-y-auto space-y-3"></div>
         </div>
     </div>
 
@@ -84,7 +78,6 @@
 
     <div class="fixed bottom-12 left-12 w-48 h-32 glass-panel rounded-2xl overflow-hidden z-40">
         <video id="input_video" class="absolute inset-0 w-full h-full object-cover opacity-20" playsinline></video>
-        <canvas id="output_canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
     </div>
 
     <script>
@@ -98,7 +91,7 @@
         let audioStarted = false, okGestureStartTime = null;
 
         const artifactDescriptions = {
-            '龙泉窑舟形砚滴': '浙江省博物馆的镇馆之宝。整器巧妙化作一叶扁舟，舟上人物神态生动。釉质紧致，色泽淡雅。作为盛水注墨之器，它不仅体现了宋元时期陶瓷工艺的精湛，更承载了古代士大夫阶层的审美风骨。',
+            '龙泉窑舟形砚滴': '这是一件极具文人情趣的文房珍玩。整器巧妙化作一叶扁舟，舟上人物神态生动。釉质紧致，色泽淡雅。作为盛水注墨之器，它不仅体现了宋元时期陶瓷工艺的精湛，更承载了古代士大夫阶层的审美风骨。',
             '青釉小瓷马': '这件瓷马形态健硕，四足有力，将马的昂扬姿态表现得淋漓尽致。釉色清亮，完美贴合雕塑线条。它虽体积微小，却展现了龙泉窑工匠在微型造像上的卓越功底，是难得一见的动物题材杰作。',
             '龙泉窑青釉鸡首壶': '此壶集实用与审美于一体，鸡首昂扬，象征着黎明与吉祥。釉色呈现典型的梅子青感，温润莹泽。其造型流线流畅，展现了龙泉窑早期对自然形态的精妙捕捉与釉料烧制的极高水准。',
             '青釉双鱼耳瓶': '瓶侧双鱼形耳栩栩如生，寓意“年年有余”。釉面清亮剔透，色泽青翠欲滴。器型比例匀称，瓶颈修长，鱼耳的点缀打破了器物的沉静，增添了一抹灵动之气，是龙泉青瓷中的经典制式。',
@@ -110,13 +103,17 @@
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 0.1, 2000);
             camera.position.z = 180;
+            
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
+            // 修复后期处理：确保 ShaderPass 已加载
             composer = new THREE.EffectComposer(renderer);
             composer.addPass(new THREE.RenderPass(scene, camera));
-            composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85));
+            const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85);
+            composer.addPass(bloom);
 
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(config.count * 3), 3));
@@ -153,7 +150,6 @@
             animate();
         }
 
-        // 修改点：直接使用文件相对路径，针对 GitHub 仓库环境优化
         function loadFixedArchives() {
             const gltfLoader = new THREE.GLTFLoader();
             const targets = [
@@ -172,12 +168,11 @@
             renderModelList();
 
             models.forEach((m, i) => {
-                // 这里使用当前文件夹下的相对路径，防止跨域报错
                 gltfLoader.load(m.file, (gltf) => {
                     m.group = gltf.scene;
                     m.loaded = true;
                     renderModelList();
-                }, undefined, (err) => console.error(m.name + ' 加载失败，请检查文件名是否正确', err));
+                }, undefined, (err) => console.error(m.name + " 加载失败", err));
             });
         }
 
@@ -186,27 +181,12 @@
             list.innerHTML = '';
             models.forEach((m, i) => {
                 const div = document.createElement('div');
-                div.className = "draggable-item p-4 bg-white/5 rounded-xl flex justify-between items-center ui-interact mb-2";
-                div.setAttribute('draggable', 'true');
+                div.className = "p-4 bg-white/5 rounded-xl flex justify-between items-center ui-interact mb-2 cursor-pointer border border-white/5 hover:border-cyan-400/50 transition-all";
                 div.innerHTML = `
                     <span class="text-[10px] tracking-widest text-white/70">${m.name}</span>
-                    <button class="text-[8px] border border-cyan-400/30 px-2 py-1 rounded text-cyan-400">
-                        ${m.loaded ? 'LOAD' : 'LOADING...'}
-                    </button>
+                    <span class="text-[8px] text-cyan-400">${m.loaded ? 'READY' : 'LOADING'}</span>
                 `;
                 div.onclick = () => { if(m.loaded) reconstructModel(i); };
-                
-                // 拖拽排序逻辑
-                div.ondragstart = (e) => { e.dataTransfer.setData('text', i); div.style.opacity = '0.4'; };
-                div.ondragend = () => div.style.opacity = '1';
-                div.ondragover = (e) => e.preventDefault();
-                div.ondrop = (e) => {
-                    e.preventDefault();
-                    const from = parseInt(e.dataTransfer.getData('text'));
-                    const item = models.splice(from, 1)[0];
-                    models.splice(i, 0, item);
-                    renderModelList();
-                };
                 list.appendChild(div);
             });
         }
@@ -234,8 +214,7 @@
 
             const box = new THREE.Box3().setFromObject(m.group);
             const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            const scale = 55 / Math.max(size.x, size.y, size.z);
+            const scale = 55 / Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).y);
 
             for(let i=0; i<config.count; i++) {
                 const i3 = i * 3;
@@ -247,7 +226,7 @@
                     targetColors[i3] = 0.4; targetColors[i3+1] = 0.8; targetColors[i3+2] = 0.7;
                     targetSizes[i] = 0.05;
                 } else {
-                    const r = 100 + Math.random() * 50;
+                    const r = 120 + Math.random() * 30;
                     const a = Math.random() * Math.PI * 2;
                     targetPositions[i3] = Math.cos(a) * r;
                     targetPositions[i3+1] = (Math.random()-0.5) * 200;
@@ -262,13 +241,13 @@
         function setNebulaMode() {
             for(let i=0; i<config.count; i++) {
                 const i3 = i * 3;
-                const r = 60 + Math.random() * 60;
+                const r = 70 + Math.random() * 50;
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.acos(Math.random() * 2 - 1);
                 targetPositions[i3] = r * Math.sin(phi) * Math.cos(theta);
                 targetPositions[i3+1] = r * Math.sin(phi) * Math.sin(theta);
                 targetPositions[i3+2] = r * Math.cos(phi);
-                targetColors[i3] = 0.3; targetColors[i3+1] = 0.5; targetColors[i3+2] = 0.6;
+                targetColors[i3] = 0.2; targetColors[i3+1] = 0.4; targetColors[i3+2] = 0.5;
                 targetSizes[i] = 0.08;
             }
         }
@@ -299,11 +278,8 @@
             composer.render();
         }
 
-        // 修改点：优化 MediaPipe 加载逻辑
         function initVision() {
             const video = document.getElementById('input_video');
-            const canvasCtx = document.getElementById('output_canvas').getContext('2d');
-            
             const hands = new Hands({ locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}` });
             hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7 });
             
@@ -313,11 +289,9 @@
                 const okBar = document.getElementById('ok-bar');
 
                 if(res.multiHandLandmarks && res.multiHandLandmarks.length > 0) {
-                    dot.className = "w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00ffff]";
+                    dot.className = "w-2 h-2 rounded-full bg-cyan-400";
                     label.innerText = "手势交互中";
                     const lm = res.multiHandLandmarks[0];
-                    
-                    // OK 手势逻辑
                     const d = (p1, p2) => Math.hypot(lm[p1].x - lm[p2].x, lm[p1].y - lm[p2].y);
                     const isOK = d(4, 8) < 0.05 && lm[12].y < lm[10].y;
                     
@@ -330,8 +304,7 @@
                             okGestureStartTime = null;
                         }
                     } else {
-                        okGestureStartTime = null;
-                        okBar.style.width = "0%";
+                        okGestureStartTime = null; okBar.style.width = "0%";
                     }
                 } else {
                     dot.className = "w-2 h-2 rounded-full bg-red-600";
